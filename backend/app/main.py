@@ -1,12 +1,19 @@
-from fastapi import FastAPI, Depends
+# pyrefly: ignore [missing-import]
+from fastapi import FastAPI, Depends, HTTPException
+# pyrefly: ignore [missing-import]
 from sqlalchemy import text
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
+# pyrefly: ignore [missing-import]
+from app.core.security import hash_password
+# pyrefly: ignore [missing-import]
 import uvicorn
 
-from app.database import get_db, engine
-from app import models  # Models tika import karaganna ona
+# pyrefly: ignore [missing-import]
+from app.db.database import get_db, engine
+from app.db import models
 
-# App eka run weddi models wala thiyena tables tika DB eke create karanawa
+# Tables auto create karanawa
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -27,6 +34,10 @@ def health_check(db: Session = Depends(get_db)):
         "service": "AI Marketing Agent API is running",
         "database": db_status
     }
+
+from app.api import auth
+
+app.include_router(auth.router)
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
