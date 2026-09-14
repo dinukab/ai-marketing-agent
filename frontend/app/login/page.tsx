@@ -1,8 +1,34 @@
-import React from 'react';
-import { Mail, Lock, Eye, Check, TrendingUp, Sparkles, UploadCloud, Shield, CheckCircle2, ArrowRight } from 'lucide-react';
+"use client";
+
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { loginUser } from '../lib/api';
+import { Mail, Lock, Eye, EyeOff, Check, TrendingUp, Sparkles, UploadCloud, Shield, CheckCircle2, ArrowRight, ShieldAlert } from 'lucide-react';
 
 
 export default function LoginPage() {
+    const router = useRouter();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setIsLoading(true);
+        try {
+            await loginUser({ email, password });
+            router.push('/dashboard');
+        } catch (err: any) {
+            setError(err.message || 'Login failed');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div className="flex min-h-screen w-full bg-white text-slate-900 font-sans">
             {/* Left Panel */}
@@ -48,7 +74,14 @@ export default function LoginPage() {
                         <div className="h-px bg-slate-100 flex-1"></div>
                     </div>
 
-                    <div className="space-y-4">
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm border border-red-100 flex items-center gap-2">
+                            <ShieldAlert className="w-4 h-4" />
+                            {error}
+                        </div>
+                    )}
+
+                    <form className="space-y-4" onSubmit={handleSubmit}>
                         <div>
                             <label className="block text-sm font-semibold mb-1.5 text-slate-700">Business Email</label>
                             <div className="relative">
@@ -56,7 +89,10 @@ export default function LoginPage() {
                                 <input
                                     type="email"
                                     placeholder="marcus.vance@thegrandbistro.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
                                     className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm placeholder:text-slate-400 font-medium text-slate-800"
+                                    required
                                 />
                             </div>
                         </div>
@@ -64,39 +100,56 @@ export default function LoginPage() {
                         <div>
                             <div className="flex items-center justify-between mb-1.5">
                                 <label className="block text-sm font-semibold text-slate-700">Password</label>
-                                <a href="#" className="text-xs text-blue-600 font-medium hover:underline">Forgot password?</a>
+                                <Link href="/forgot-password" className="text-xs text-blue-600 font-medium hover:underline">Forgot password?</Link>
                             </div>
                             <div className="relative">
                                 <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input
-                                    type="password"
-                                    defaultValue="somesecretpassword"
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder="Enter your password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
                                     className="w-full pl-9 pr-10 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm tracking-widest text-slate-800 font-bold"
+                                    required
                                 />
-                                <Eye className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer hover:text-slate-600 transition-colors" />
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowPassword(!showPassword)} 
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                                >
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="flex items-center justify-between mt-6 mb-8">
-                        <label className="flex items-center gap-2 cursor-pointer group">
-                            <div className="w-4 h-4 rounded border border-blue-600 bg-blue-600 flex items-center justify-center">
-                                <Check className="w-3 h-3 text-white" />
-                            </div>
-                            <span className="text-sm text-slate-600 font-medium">Remember me for 30 days</span>
-                        </label>
-                        <span className="text-[10px] font-bold bg-emerald-100/50 text-emerald-700 px-2 py-1 rounded flex items-center gap-1.5 border border-emerald-100">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                            Workspace Active
-                        </span>
-                    </div>
+                        <div className="flex items-center justify-between mt-6 mb-8">
+                            <label className="flex items-center gap-2 cursor-pointer group">
+                                <div className="w-4 h-4 rounded border border-blue-600 bg-blue-600 flex items-center justify-center">
+                                    <Check className="w-3 h-3 text-white" />
+                                </div>
+                                <span className="text-sm text-slate-600 font-medium">Remember me for 30 days</span>
+                            </label>
+                            <span className="text-[10px] font-bold bg-emerald-100/50 text-emerald-700 px-2 py-1 rounded flex items-center gap-1.5 border border-emerald-100">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                                Workspace Active
+                            </span>
+                        </div>
 
-                    <button className="w-full bg-[#0f172a] hover:bg-[#1e293b] text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm shadow-md">
-                        Sign in <ArrowRight className="w-4 h-4" />
-                    </button>
+                        <button 
+                            type="submit" 
+                            disabled={isLoading}
+                            className="w-full bg-[#0f172a] hover:bg-[#1e293b] text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm shadow-md disabled:opacity-70"
+                        >
+                            {isLoading ? (
+                                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                            ) : (
+                                <>Sign in <ArrowRight className="w-4 h-4" /></>
+                            )}
+                        </button>
+                    </form>
 
                     <p className="text-center text-sm text-slate-500 mt-6 font-medium">
-                        Don't have an account? <a href="#" className="text-blue-600 font-semibold hover:underline">Create an account</a>
+                        Don't have an account? <Link href="/register" className="text-blue-600 font-semibold hover:underline">Create an account</Link>
                     </p>
                 </div>
 
@@ -117,7 +170,7 @@ export default function LoginPage() {
             </div>
 
             {/* Right Panel */}
-            <div className="hidden lg:flex w-[55%] bg-blue-100 flex-col relative  overflow-hidden">
+            <div className="hidden lg:flex w-[55%] flex-col bg-blue-100  relative  overflow-hidden">
                 
 
                 {/* Main Content Area */}

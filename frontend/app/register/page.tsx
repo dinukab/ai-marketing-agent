@@ -1,23 +1,73 @@
-import React from 'react';
+"use client";
+
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { registerUser } from '../lib/api';
 import { 
-  Mail, Lock, Eye, Check, TrendingUp, Sparkles, Shield, CheckCircle2, 
+  Mail, Lock, Eye, EyeOff, Check, TrendingUp, Sparkles, Shield, CheckCircle2, 
   ArrowRight, Building2, User, ChevronDown, Zap, Clock, ShieldCheck, 
-  Activity, MapPin, CheckCircle, ShieldAlert
+  Activity, MapPin, CheckCircle, ShieldAlert, Circle
 } from 'lucide-react';
 
 
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [businessCategory, setBusinessCategory] = useState('Restaurant & Hospitality');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const hasLength = password.length >= 8;
+  const hasUpperAndNumber = /[A-Z]/.test(password) && /[0-9]/.test(password);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  const conditionsMet = [hasLength, hasUpperAndNumber, hasSpecial].filter(Boolean).length;
+  
+  const getStrength = () => {
+    if (password.length === 0) return { label: '', color: 'text-slate-500', bars: 0, barColor: 'bg-slate-200' };
+    if (conditionsMet === 0) return { label: 'Weak', color: 'text-red-500', bars: 1, barColor: 'bg-red-500' };
+    if (conditionsMet === 1) return { label: 'Fair', color: 'text-yellow-500', bars: 2, barColor: 'bg-yellow-500' };
+    if (conditionsMet === 2) return { label: 'Good', color: 'text-blue-500', bars: 3, barColor: 'bg-blue-500' };
+    return { label: 'Strong Password', color: 'text-emerald-600', bars: 4, barColor: 'bg-blue-600' };
+  };
+  const strength = getStrength();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    setError('');
+    setIsLoading(true);
+    try {
+      await registerUser({ name, email, password });
+      router.push('/login?registered=true');
+    } catch (err: any) {
+      setError(err.message || 'Registration failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="flex  min-h-screen w-full bg-white text-slate-900 font-sans">
       {/* Navbar assuming it's fixed */}
       
       
-      <div className="flex-1 flex w-full max-w-[1400px] mx-auto px-6 lg:px-12 gap-10 items-start">
+      <div className="flex-1 flex w-full">
         
         {/* Left Panel: Form Card */}
         <div className="w-full lg:w-[45%] flex flex-col mb-15 justify-center p-8 lg:p-8 xl:p-20 border-r border-slate-100">
-          
+
           {/* Logo */}
           <div className="flex items-center gap-2 mb-12">
             <div className="w-7 h-7 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-sm tracking-tighter">
@@ -41,6 +91,7 @@ export default function RegisterPage() {
           </p>
 
           <button className="w-full flex items-center justify-center gap-3 bg-[#f0f4f8] hover:bg-[#e2e8f0] text-slate-700 rounded-xl py-3 font-semibold transition-colors mb-6 text-sm border border-slate-200/50">
+           
             {/* Google SVG Logo */}
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -57,7 +108,14 @@ export default function RegisterPage() {
             <div className="h-px bg-slate-100 flex-1"></div>
           </div>
 
-          <div className="space-y-4">
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm border border-red-100 flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
             {/* Full Name */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
@@ -68,8 +126,11 @@ export default function RegisterPage() {
                 <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  defaultValue="Elena Rostova"
+                  placeholder="Elena Rostova"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-[#f8fafc] rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium text-slate-800"
+                  required
                 />
               </div>
             </div>
@@ -84,8 +145,11 @@ export default function RegisterPage() {
                 <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="email"
-                  defaultValue="elena@artisancoffee.com"
+                  placeholder="elena@artisancoffee.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-[#f8fafc] rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium text-slate-800"
+                  required
                 />
               </div>
             </div>
@@ -95,8 +159,14 @@ export default function RegisterPage() {
               <label className="block text-xs font-bold text-slate-700 mb-1.5">Business category / Industry</label>
               <div className="relative">
                 <Building2 className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <select className="w-full pl-10 pr-10 py-3 bg-[#f8fafc] rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium text-slate-800 appearance-none">
+                <select 
+                  value={businessCategory}
+                  onChange={(e) => setBusinessCategory(e.target.value)}
+                  className="w-full pl-10 pr-10 py-3 bg-[#f8fafc] rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium text-slate-800 appearance-none"
+                >
                   <option>Restaurant & Hospitality</option>
+                  <option>Retail</option>
+                  <option>Services</option>
                 </select>
                 <ChevronDown className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
@@ -106,36 +176,44 @@ export default function RegisterPage() {
             <div>
               <div className="flex justify-between items-center mb-1.5">
                 <label className="block text-xs font-bold text-slate-700">Password</label>
-                <span className="text-[10px] font-bold text-emerald-600">Strong Password</span>
+                <span className={`text-[10px] font-bold ${strength.color}`}>{strength.label}</span>
               </div>
               <div className="relative mb-2">
                 <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="password"
-                  defaultValue="ArtisanCoffee#2025!"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter a strong password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-10 py-3 bg-[#f8fafc] rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium text-slate-800"
+                  required
                 />
-                <Eye className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer" />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)} 
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
               
               {/* Strength bars */}
               <div className="flex gap-1.5 mb-3">
-                <div className="h-1.5 flex-1 bg-blue-600 rounded-full"></div>
-                <div className="h-1.5 flex-1 bg-blue-600 rounded-full"></div>
-                <div className="h-1.5 flex-1 bg-blue-600 rounded-full"></div>
-                <div className="h-1.5 flex-1 bg-blue-600 rounded-full"></div>
+                {[1, 2, 3, 4].map((bar) => (
+                  <div key={bar} className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${bar <= strength.bars ? strength.barColor : 'bg-slate-100'}`}></div>
+                ))}
               </div>
               
               {/* Criteria */}
               <div className="bg-[#f8fafc] border border-slate-100 rounded-xl p-3 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600" /> Use at least 8 characters
+                <div className={`flex items-center gap-2 text-xs font-semibold ${hasLength ? 'text-slate-700' : 'text-slate-400'}`}>
+                  {hasLength ? <CheckCircle2 className="w-4 h-4 text-blue-600" /> : <Circle className="w-4 h-4 text-slate-300" />} Use at least 8 characters
                 </div>
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600" /> At least one uppercase letter & number
+                <div className={`flex items-center gap-2 text-xs font-semibold ${hasUpperAndNumber ? 'text-slate-700' : 'text-slate-400'}`}>
+                  {hasUpperAndNumber ? <CheckCircle2 className="w-4 h-4 text-blue-600" /> : <Circle className="w-4 h-4 text-slate-300" />} At least one uppercase letter & number
                 </div>
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600" /> At least one special symbol
+                <div className={`flex items-center gap-2 text-xs font-semibold ${hasSpecial ? 'text-slate-700' : 'text-slate-400'}`}>
+                  {hasSpecial ? <CheckCircle2 className="w-4 h-4 text-blue-600" /> : <Circle className="w-4 h-4 text-slate-300" />} At least one special symbol
                 </div>
               </div>
             </div>
@@ -144,25 +222,44 @@ export default function RegisterPage() {
             <div className="pt-2">
               <div className="flex justify-between items-center mb-1.5">
                 <label className="block text-xs font-bold text-slate-700">Confirm password</label>
-                <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
-                  <Check className="w-3 h-3" /> Passwords match
-                </span>
+                {confirmPassword && password === confirmPassword ? (
+                  <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
+                    <Check className="w-3 h-3" /> Passwords match
+                  </span>
+                ) : confirmPassword && password !== confirmPassword ? (
+                  <span className="text-[10px] font-bold text-red-500 flex items-center gap-1">
+                    Passwords do not match
+                  </span>
+                ) : null}
               </div>
               <div className="relative">
                 <ShieldCheck className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="password"
-                  defaultValue="ArtisanCoffee#2025!"
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full pl-10 pr-10 py-3 bg-[#f8fafc] rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium text-slate-800"
+                  required
                 />
-                <CheckCircle2 className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-blue-600" />
+                {password && confirmPassword && password === confirmPassword && (
+                  <CheckCircle2 className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-blue-600" />
+                )}
               </div>
             </div>
-          </div>
 
-          <button className="w-full bg-black hover:bg-slate-900 text-white py-3.5 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm shadow-md mt-8">
-            Create account <ArrowRight className="w-4 h-4" />
-          </button>
+            <button 
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-black hover:bg-slate-900 text-white py-3.5 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm shadow-md mt-8 disabled:opacity-70"
+            >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <>Create account <ArrowRight className="w-4 h-4" /></>
+              )}
+            </button>
+          </form>
 
           <p className="text-xs text-slate-500 mt-4 text-center leading-relaxed">
             By creating an account, you agree to our <a href="#" className="font-semibold text-slate-700 underline">Terms of Service</a> and <a href="#" className="font-semibold text-slate-700 underline">Privacy Policy</a>.
@@ -174,8 +271,10 @@ export default function RegisterPage() {
           </div>
         </div>
 
+        
+
         {/* Right Panel: Features Showcase */}
-        <div className="hidden lg:flex w-[55%] flex-col bg-blue-100 relative overflow-hidden gap-6">
+        <div className="hidden lg:flex w-[55%] flex-col pt-8 px-12 pb-12 bg-blue-100 relative overflow-hidden gap-6">
         
           
           {/* Black Banner */}

@@ -9,10 +9,23 @@ from app import models  # Models tika import karaganna ona
 # App eka run weddi models wala thiyena tables tika DB eke create karanawa
 models.Base.metadata.create_all(bind=engine)
 
+from fastapi.middleware.cors import CORSMiddleware
+from app.api import auth
+
 app = FastAPI(
     title="AI Marketing Agent API",
     version="1.0.0"
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
 @app.get("/api/health")
 def health_check(db: Session = Depends(get_db)):
