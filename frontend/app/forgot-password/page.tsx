@@ -1,101 +1,169 @@
-import React from 'react';
-import { Mail, ArrowLeft, RotateCcw, ShieldCheck, Headset, ArrowRight, ChevronRight } from 'lucide-react';
+"use client";
+
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
+import { Mail, ArrowRight, ShieldAlert, CheckCircle2, Lock, ArrowLeft } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
+    const router = useRouter();
+    const [email, setEmail] = useState('');
+    const [error, setError] = useState('');
+    const [isSuccess, setIsSuccess] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setIsLoading(true);
+        
+        try {
+            // Mocking API call
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            setIsSuccess(true);
+        } catch (err: any) {
+            setError(err.message || 'Failed to send reset link');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
-        <div className="flex min-h-screen w-full bg-[#f8fafc] text-slate-900 font-sans items-center justify-center p-4">
-            {/* Centered Card */}
-            <div className="w-full max-w-[540px] bg-white rounded-3xl p-8 sm:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col items-center text-center relative overflow-hidden">
-
-                {/* Subtle Top Gradient for the card */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-gradient-to-b from-blue-50/50 to-transparent pointer-events-none"></div>
-
-                {/* Logo */}
-                <div className="flex items-center justify-center gap-3 mb-10 z-10 relative">
-                    <div className="w-10 h-10 bg-[#0f172a] rounded-xl flex items-center justify-center text-white font-bold tracking-tighter shadow-sm">
-                        {/* Simple logo placeholder similar to image */}
-                        <div className="flex gap-1">
-                            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+        <div className="flex min-h-screen w-full bg-white text-slate-900 font-sans">
+            {/* Left Panel */}
+            <div className="w-full lg:w-[45%] flex flex-col mb-15 justify-center p-8 lg:p-8 xl:p-20 border-r border-slate-100">
+                {/* Header */}
+                <div className="w-full max-w-md mx-auto lg:mx-0">
+                    {/* Logo */}
+                    <div className="flex items-center gap-2 mb-12">
+                        <div className="w-7 h-7 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-sm tracking-tighter">
+                            RP
+                        </div>
+                        <div>
+                            <div className="font-bold text-lg leading-tight flex items-center gap-1">
+                                ReviewPilot <span className="text-blue-600">AI</span>
+                                <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono ml-1">AUTH</span>
+                            </div>
+                            <div className="text-[9px] text-slate-500 uppercase tracking-widest font-semibold mt-0.5">
+                                Autonomous Reputation Engine
+                            </div>
                         </div>
                     </div>
-                    <div className="text-left">
-                        <div className="font-bold text-xl leading-none flex items-center gap-1 text-slate-900 tracking-tight">
-                            ReviewPilot<span className="text-blue-600">.ai</span>
+
+                    <Link href="/login" className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors mb-8">
+                        <ArrowLeft className="w-4 h-4" /> Back to login
+                    </Link>
+
+                    <h1 className="text-3xl lg:text-4xl font-bold mb-3 tracking-tight text-slate-900">Reset password</h1>
+                    <p className="text-slate-500 text-sm mb-8 leading-relaxed">
+                        Enter your email address and we'll send you a link to securely reset your password.
+                    </p>
+
+                    {error && (
+                        <div className="mb-6 p-3 bg-red-50 text-red-600 rounded-lg text-sm border border-red-100 flex items-center gap-2">
+                            <ShieldAlert className="w-4 h-4" />
+                            {error}
                         </div>
-                        <div className="text-[9px] text-slate-500 font-mono tracking-widest mt-1 uppercase">
-                            Autonomous Reputation Core
+                    )}
+
+                    {isSuccess ? (
+                        <div className="mb-8 p-6 bg-emerald-50 rounded-xl border border-emerald-100 text-center space-y-4">
+                            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
+                                <Mail className="w-6 h-6 text-emerald-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-emerald-900 mb-1">Check your inbox</h3>
+                                <p className="text-sm text-emerald-700 leading-relaxed">
+                                    We've sent a password reset link to <span className="font-bold">{email}</span>. Please check your spam folder if it doesn't arrive in a few minutes.
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <form className="space-y-6" onSubmit={handleSubmit}>
+                            <div>
+                                <label className="block text-sm font-semibold mb-1.5 text-slate-700">Business Email</label>
+                                <div className="relative">
+                                    <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        type="email"
+                                        placeholder="marcus.vance@thegrandbistro.com"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm placeholder:text-slate-400 font-medium text-slate-800"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <button 
+                                type="submit" 
+                                disabled={isLoading || !email}
+                                className="w-full bg-[#0f172a] hover:bg-[#1e293b] text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm shadow-md disabled:opacity-70"
+                            >
+                                {isLoading ? (
+                                    <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                ) : (
+                                    <>Send Reset Link <ArrowRight className="w-4 h-4" /></>
+                                )}
+                            </button>
+                        </form>
+                    )}
+
+                    <div className="mt-10 flex flex-col items-center gap-4">
+                        <div className="flex items-center justify-center gap-2 text-sm text-slate-500 font-medium">
+                            <Lock className="w-4 h-4 text-slate-400" /> Secure password recovery
                         </div>
                     </div>
                 </div>
 
-                {/* Reset Icon */}
-                <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 text-blue-600 border border-blue-100/50 z-10">
-                    <RotateCcw className="w-6 h-6 stroke-[2.5]" />
+                {/* Footer Security/Certifications */}
+                <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium border-t border-slate-100 pt-6 mt-12 w-full max-w-md mx-auto lg:mx-0">
+                    <div className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>SOC-2 Type II Certified</span>
+                    </div>
+                    <span className="text-slate-300">•</span>
+                    <div className="flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-blue-500" />
+                        <span>256-bit TLS Encryption</span>
+                    </div>
+                    <span className="text-slate-300">•</span>
+                    <div>99.98% SLA</div>
                 </div>
+            </div>
 
-                {/* Headings */}
-                <h1 className="text-3xl font-bold mb-3 tracking-tight text-slate-900 z-10">
-                    Reset your password
-                </h1>
-                <p className="text-slate-500 text-sm mb-10 leading-relaxed max-w-[380px] z-10 font-medium">
-                    Enter your verified business email and we'll send you a secure link to reset your account credentials.
-                </p>
+            {/* Right Panel */}
+            <div className="hidden lg:flex w-[55%] flex-col relative overflow-hidden bg-slate-900">
+                <Image 
+                    src="/forgot-password.jpg" 
+                    alt="Digital Security Illustration" 
+                    fill 
+                    className="object-cover opacity-90"
+                    priority
+                />
+                
+                {/* Overlay gradient */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-slate-900/80 via-blue-900/40 to-transparent"></div>
 
-                {/* Form Area */}
-                <div className="w-full text-left z-10">
-                    <div className="flex justify-between items-center mb-2">
-                        <label className="block text-sm font-bold text-slate-800">Business email address</label>
-                        <span className="text-[10px] font-bold text-slate-500 tracking-widest uppercase font-mono">
-                            SSO / 2FA PROTECTED
-                        </span>
-                    </div>
-
-                    <div className="relative mb-3">
-                        <Mail className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="email"
-                            defaultValue="marcus.vance@revivegroup.io"
-                            className="w-full pl-11 pr-4 py-3.5 bg-[#f8fafc] rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-medium text-slate-800 transition-all"
-                        />
-                    </div>
-
-                    <div className="flex items-start gap-2 text-xs text-slate-500 mb-8 font-medium">
-                        <ShieldCheck className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                        <p className="leading-relaxed">
-                            We'll send recovery instructions associated with your Google Business administrator account.
-                        </p>
-                    </div>
-
-                    <button className="w-full bg-black hover:bg-slate-900 text-white py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-[15px] shadow-[0_4px_14px_0_rgb(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] mb-8">
-                        Send reset link <ArrowRight className="w-4 h-4" />
-                    </button>
-
-                    <div className="flex justify-center mb-10">
-                        <Link href="/login" className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors">
-                            <ArrowLeft className="w-4 h-4" /> Back to sign in
-                        </Link>
-                    </div>
-
-                    {/* Support Box */}
-                    <div className="bg-[#f0f4f8] rounded-2xl p-5 flex items-center justify-between gap-4 border border-blue-50">
-                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm shrink-0">
-                            <Headset className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div className="flex-1">
-                            <h4 className="text-xs font-bold text-slate-800 mb-1 leading-snug">
-                                Need urgent assistance accessing your location account?
-                            </h4>
-                            <p className="text-[11px] text-slate-500 font-medium leading-relaxed pr-2">
-                                Multi-location tier accounts receive dedicated 24/7 Priority SLA response.
+                {/* Content Overlay */}
+                <div className="absolute inset-0 flex flex-col justify-end p-16 z-10">
+                    <div className="max-w-xl">
+                        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 text-white">
+                            <h2 className="text-2xl font-bold mb-3 tracking-tight">Enterprise-Grade Security</h2>
+                            <p className="text-slate-200 text-sm leading-relaxed mb-6 font-medium">
+                                Your account is protected by industry-leading security protocols. We employ advanced encryption and continuous monitoring to ensure your data remains safe.
                             </p>
+                            <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                                        <ShieldAlert className="w-4 h-4 text-emerald-400" />
+                                    </div>
+                                    <span className="text-sm font-semibold text-slate-200">Zero Trust Architecture</span>
+                                </div>
+                            </div>
                         </div>
-                        <a href="#" className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 whitespace-nowrap shrink-0">
-                            Contact Business Support <ChevronRight className="w-3.5 h-3.5" />
-                        </a>
                     </div>
-
                 </div>
             </div>
         </div>
