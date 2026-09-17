@@ -22,3 +22,13 @@ def create_access_token(data: dict) -> str:
     
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm="HS256")
     return encoded_jwt
+
+
+def generate_password_reset_token() -> str:
+    import secrets
+    return secrets.token_urlsafe(32)
+
+
+def hash_token(token: str) -> str:
+    import hashlib
+    return hashlib.sha256(token.encode()).hexdigest()
