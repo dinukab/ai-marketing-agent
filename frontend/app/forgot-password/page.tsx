@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Mail, ArrowRight, ShieldAlert, CheckCircle2, Lock, ArrowLeft } from 'lucide-react';
+import { forgotPassword } from '../lib/api';
 
 export default function ForgotPasswordPage() {
     const router = useRouter();
@@ -19,8 +20,7 @@ export default function ForgotPasswordPage() {
         setIsLoading(true);
         
         try {
-            // Mocking API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await forgotPassword({ email });
             setIsSuccess(true);
         } catch (err: any) {
             setError(err.message || 'Failed to send reset link');
