@@ -1,37 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import User
-from app.schemas.user import UserCreate, UserResponse, UserLogin
-from app.core.security import get_password_hash, verify_password
 
-router = APIRouter()
-
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    # Check if user already exists
-    db_user = db.query(User).filter(User.email == user_data.email).first()
-    if db_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
-    
-    # Hash password
-    hashed_password = get_password_hash(user_data.password)
-    
-    # Create new user
-    new_user = User(
-        name=user_data.name,
-        email=user_data.email,
-        hashed_password=hashed_password
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta, timezone
 from app.db.database import get_db
 from app.db import models
-from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, MessageResponse
+from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, MessageResponse, ForgotPasswordRequest, ResetPasswordRequest
 from app.schemas.user import UserResponse
-from app.core.security import hash_password, verify_password, create_access_token
+from app.core.security import hash_password, verify_password, create_access_token, generate_password_reset_token, hash_token
+from app.services.email_service import send_password_reset_email
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -53,11 +29,6 @@ def register(user: RegisterRequest, db: Session = Depends(get_db)):
     
     return new_user
 
-@router.post("/login", response_model=UserResponse)
-def login(user_data: UserLogin, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user_data.email).first()
-    if not db_user or not verify_password(user_data.password, db_user.hashed_password):
-
 @router.post("/login", response_model=TokenResponse)
 def login(response: Response, login_data: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == login_data.email).first()
@@ -66,8 +37,7 @@ def login(response: Response, login_data: LoginRequest, db: Session = Depends(ge
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
-    return db_user
-    
+
     access_token = create_access_token(data={"sub": str(user.id)})
     
     # Set HttpOnly cookie
@@ -92,3 +62,67 @@ def logout(response: Response):
         secure=False
     )
     return {"message": "Successfully logged out"}
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == request.email).first()
+    if user:
+        # Generate a secure token
+        reset_token = generate_password_reset_token()
+        hashed_token = hash_token(reset_token)
+        
+        # Save token to db, expires in 1 hour
+        expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        db_token = models.PasswordResetToken(
+            user_id=user.id,
+            token_hash=hashed_token,
+            expires_at=expires
+        )
+        db.add(db_token)
+        db.commit()
+        
+        try:
+            send_password_reset_email(to_email=user.email, reset_token=reset_token)
+            print(f"DEBUG: Sent password reset email to {user.email}")
+        except Exception as e:
+            print(f"ERROR: Failed to send password reset email to {user.email}: {e}")
+        
+    return {"message": "If an account with that email exists, a password reset link has been sent."}
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    # Hash the incoming plain text token
+    hashed_token = hash_token(request.token)
+    
+    # Find token in database
+    db_token = db.query(models.PasswordResetToken).filter(
+        models.PasswordResetToken.token_hash == hashed_token,
+        models.PasswordResetToken.used_at.is_(None),
+        models.PasswordResetToken.expires_at > datetime.now(timezone.utc)
+    ).first()
+    
+    if not db_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token"
+        )
+        
+    # Find the associated user
+    user = db.query(models.User).filter(models.User.id == db_token.user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+        
+    # Update user password
+    user.hashed_password = hash_password(request.new_password)
+    
+    # Mark token as used
+    db_token.used_at = datetime.now(timezone.utc)
+    
+    db.commit()
+    
+    return {"message": "Password successfully reset"}
