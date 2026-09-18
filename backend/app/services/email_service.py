@@ -4,7 +4,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 # Hardcoded API key as requested
+<<<<<<< HEAD
 resend.api_key = "re_ES9zy6Y7_M1Cnui34mHhNwUvsn2XyByar"
+=======
+resend.api_key = os.getenv("RESEND_API_KEY")
+>>>>>>> main
 
 def send_password_reset_email(to_email: str, reset_token: str):
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
