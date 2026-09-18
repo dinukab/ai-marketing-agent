@@ -16,13 +16,34 @@ import {
   HelpCircle,
   Settings,
   LogOut,
-  User
+  User,
+  LucideIcon
 } from 'lucide-react';
+
+type NavItem = {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  badge?: {
+    text: string;
+    color: string;
+  };
+  status?: {
+    text: string;
+    color: string;
+    dot: string;
+  };
+};
+
+type NavGroup = {
+  section: string;
+  items: NavItem[];
+};
 
 export default function Sidebar() {
   const pathname = usePathname();
 
-  const navItems = [
+  const navItems: NavGroup[] = [
     {
       section: "MAIN",
       items: [
