@@ -81,12 +81,11 @@ export default function Sidebar() {
       {/* Logo Area */}
       <div className="p-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm">
+          <div className="w-9 h-9 bg-[#5636f5] rounded-lg flex items-center justify-center text-white font-bold text-md shadow-md">
             RP
           </div>
           <div className="flex flex-col">
             <span className="font-bold text-slate-900 text-[15px] leading-tight">ReviewPilot AI</span>
-            <span className="text-[10px] text-slate-500 font-semibold tracking-wider">V2.4 PRO</span>
           </div>
         </div>
         <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-100 rounded-full">

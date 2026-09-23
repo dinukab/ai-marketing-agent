@@ -50,7 +50,15 @@ def login(response: Response, login_data: LoginRequest, db: Session = Depends(ge
         max_age=3600
     )
     
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email
+        }
+    }
 
 
 @router.post("/logout", response_model=MessageResponse)
