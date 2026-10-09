@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { fetchReviews, seedReviews, fetchReviewStats } from '../../lib/api';
 import {
   Search,
   ChevronDown,
@@ -23,99 +24,91 @@ import {
   CalendarClock
 } from 'lucide-react';
 
-// --- Mock Data ---
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const mockReviews = [
-  {
-    id: "REV-9482",
-    customer: { name: "Sarah M.", avatar: "SM", level: "Google Local Guide • Level 4", initialsBg: "bg-amber-600 text-white" },
-    rating: 5,
-    timeAgo: "2 hours ago",
-    dateFull: "Nov 16, 2024 at 10:14 AM",
-    excerpt: "The service was excellent. The staff were very friendly and th...",
-    fullText: "The service was excellent. The staff were very friendly and the flat white was perfect. Definitely coming back for their weekend brunch pastries!",
-    topics: ["Service", "Staff", "Coffee"],
-    sentiment: "Positive",
-    aiState: "AI Ready",
-    aiSubtext: "Tone: Warm",
-    action: "VIEW",
-    verified: true
-  },
-  {
-    id: "REV-9481",
-    customer: { name: "John D.", avatar: "JD", level: "Local Guide", initialsBg: "bg-blue-200 text-blue-700" },
-    rating: 3,
-    timeAgo: "5 hours ago",
-    excerpt: "The food was good but delivery took too long. Ordered at...",
-    topics: ["Food", "Delivery Delays"],
-    sentiment: "Neutral",
-    aiState: "Needs Response",
-    action: "RESPOND"
-  },
-  {
-    id: "REV-9480",
-    customer: { name: "Michael R.", avatar: "MR", level: "Reviewer", initialsBg: "bg-slate-800 text-white" },
-    rating: 5,
-    timeAgo: "Yesterday",
-    excerpt: "Best spot in Colombo for weekend brunch. Great vibe,...",
-    topics: ["Atmosphere", "Coffee", "Staff"],
-    sentiment: "Positive",
-    aiState: "Published",
-    aiSubtext: "Via API Sync",
-    action: "VIEW"
-  },
-  {
-    id: "REV-9479",
-    customer: { name: "Emma W.", avatar: "EW", level: "Local Guide", initialsBg: "bg-rose-200 text-rose-700" },
-    rating: 2,
-    timeAgo: "2 days ago",
-    excerpt: "Waited 25 minutes for a reserved table on Sunday...",
-    topics: ["Wait Times", "Service"],
-    sentiment: "Negative",
-    aiState: "Draft Pending",
-    aiSubtext: "Needs approval",
-    action: "REVIEW"
-  },
-  {
-    id: "REV-9478",
-    customer: { name: "Daniel P.", avatar: "DP", level: "Reviewer", initialsBg: "bg-blue-100 text-blue-700" },
-    rating: 5,
-    timeAgo: "3 days ago",
-    excerpt: "Consistently excellent coffee and the avocado toast is top...",
-    topics: ["Food Quality", "Consistency"],
-    sentiment: "Positive",
-    aiState: "Published",
-    action: "VIEW"
-  },
-  {
-    id: "REV-9477",
-    customer: { name: "Sophia K.", avatar: "SK", level: "Local Guide", initialsBg: "bg-purple-100 text-purple-700" },
-    rating: 4,
-    timeAgo: "4 days ago",
-    excerpt: "Loved the matcha latte and pastry selection! A bit noisy...",
-    topics: ["Beverages", "Atmosphere"],
-    sentiment: "Positive",
-    aiState: "AI Ready",
-    action: "RESPOND"
-  },
-  {
-    id: "REV-9476",
-    customer: { name: "Liam B.", avatar: "LB", level: "Reviewer", initialsBg: "bg-red-600 text-white" },
-    rating: 1,
-    timeAgo: "5 days ago",
-    excerpt: "Order was missing items and no one answered the phone...",
-    topics: ["Order Accuracy", "Phone Support"],
-    sentiment: "Negative",
-    aiState: "High Priority",
-    aiSubtext: "<24h breach",
-    action: "RESPOND"
-  }
-];
 
 export default function ReviewsPage() {
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sentimentFilter, setSentimentFilter] = useState("all");
+  const [ratingFilter, setRatingFilter] = useState("0");
+  const [sortFilter, setSortFilter] = useState("newest");
+  const [dateFilter, setDateFilter] = useState("30days");
 
-  const selectedReview = mockReviews.find(r => r.id === selectedReviewId);
+  const [stats, setStats] = useState<any>(null);
+
+  const loadReviews = async (search?: string, sentiment?: string, ratingStr?: string, sort?: string, dateRange?: string) => {
+    try {
+      setLoading(true);
+      const rating = ratingStr && ratingStr !== "0" ? parseInt(ratingStr) : undefined;
+      const data = await fetchReviews(1, search, sentiment, rating, sort, dateRange); // business_id=1
+      setReviews(data.items ? data.items : data);
+    } catch (error) {
+      console.error("Failed to load reviews:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const data = await fetchReviewStats(1); // business_id=1
+      setStats(data);
+    } catch (error) {
+      console.error("Failed to load stats:", error);
+    }
+  };
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      loadReviews(searchQuery, sentimentFilter, ratingFilter, sortFilter, dateFilter);
+      loadStats();
+    }, 300);
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery, sentimentFilter, ratingFilter, sortFilter, dateFilter]);
+
+  const handleSeed = async () => {
+    try {
+      await seedReviews(1);
+      loadReviews();
+      loadStats();
+    } catch (error) {
+      console.error("Failed to seed reviews:", error);
+    }
+  };
+
+  const mapReview = (r: any) => ({
+    id: r.id.toString(),
+    customer: {
+      name: r.customer_name || "Unknown",
+      avatar: r.customer_avatar || "?",
+      level: r.source || "Customer",
+      initialsBg: "bg-slate-200 text-slate-700"
+    },
+    rating: r.rating,
+    timeAgo: r.created_at ? new Date(r.created_at).toLocaleDateString() : "Recently",
+    dateFull: r.created_at ? new Date(r.created_at).toLocaleString() : undefined,
+    excerpt: r.review_text ? (r.review_text.length > 50 ? r.review_text.substring(0, 50) + "..." : r.review_text) : "No text",
+    fullText: r.review_text,
+    topics: r.topics || [],
+    sentiment: r.sentiment || "Neutral",
+    aiState: r.response_status || "Needs Response",
+    aiSubtext: r.ai_response ? "Tone: Warm" : undefined,
+    action: r.ai_response ? "VIEW" : "RESPOND",
+    verified: true
+  });
+
+  const uiReviews = reviews.map(mapReview);
+  const selectedReview = uiReviews.find(r => r.id === selectedReviewId);
 
   // Helper for stars
   const renderStars = (rating: number) => {
@@ -162,7 +155,7 @@ export default function ReviewsPage() {
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total</p>
-                    <p className="text-lg font-bold text-slate-900 leading-none mt-1">248</p>
+                    <p className="text-lg font-bold text-slate-900 leading-none mt-1">{stats ? stats.total_reviews : "-"}</p>
                   </div>
                 </div>
 
@@ -173,7 +166,7 @@ export default function ReviewsPage() {
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Positive</p>
                     <p className="text-lg font-bold text-slate-900 leading-none mt-1 flex items-baseline gap-1">
-                      203 <span className="text-[11px] font-medium text-emerald-500">(82%)</span>
+                      {stats ? stats.positive_count : "-"} <span className="text-[11px] font-medium text-emerald-500">({stats && stats.total_reviews ? Math.round((stats.positive_count / stats.total_reviews) * 100) : 0}%)</span>
                     </p>
                   </div>
                 </div>
@@ -185,7 +178,7 @@ export default function ReviewsPage() {
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Neutral</p>
                     <p className="text-lg font-bold text-slate-900 leading-none mt-1 flex items-baseline gap-1">
-                      30 <span className="text-[11px] font-medium text-slate-400">(12%)</span>
+                      {stats ? stats.neutral_count : "-"} <span className="text-[11px] font-medium text-slate-400">({stats && stats.total_reviews ? Math.round((stats.neutral_count / stats.total_reviews) * 100) : 0}%)</span>
                     </p>
                   </div>
                 </div>
@@ -197,7 +190,7 @@ export default function ReviewsPage() {
                   </div>
                   <div className="px-2 w-full text-left">
                     <p className="text-lg font-bold text-slate-900 leading-none flex items-baseline gap-1">
-                      15 <span className="text-[11px] font-medium text-rose-500">(6%)</span>
+                      {stats ? stats.negative_count : "-"} <span className="text-[11px] font-medium text-rose-500">({stats && stats.total_reviews ? Math.round((stats.negative_count / stats.total_reviews) * 100) : 0}%)</span>
                     </p>
                   </div>
                 </div>
@@ -209,11 +202,11 @@ export default function ReviewsPage() {
                     <AlertTriangle className="w-3 h-3" />
                     <span className="text-[6px] font-bold tracking-widest uppercase opacity-90">Needs Response</span>
                   </div>
-                  <span className="text-[15px] font-bold">12 Unanswered</span>
+                  <span className="text-[15px] font-bold">{stats ? stats.awaiting_response_count : "-"} Unanswered</span>
                 </button>
-                <button className="bg-slate-900 hover:bg-slate-800 text-white rounded-md px-4 py-2.5 flex items-center justify-center gap-2 shadow-sm transition-colors mt-auto">
+                <button onClick={handleSeed} className="bg-slate-900 hover:bg-slate-800 text-white rounded-md px-4 py-2.5 flex items-center justify-center gap-2 shadow-sm transition-colors mt-auto">
                   <RefreshCcw className="w-3.5 h-3.5" />
-                  <span className="text-xs font-semibold">Sync Reviews <span className="opacity-60 font-normal ml-1">12m ago</span></span>
+                  <span className="text-xs font-semibold">Seed DB <span className="opacity-60 font-normal ml-1">(dev)</span></span>
                 </button>
               </div>
             </div>
@@ -223,43 +216,74 @@ export default function ReviewsPage() {
           <div className="mt-8 flex items-center justify-between">
             <div className="flex items-center gap-4 flex-1">
               <div className="relative w-[340px]">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search reviews, topics, customer name..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium placeholder:font-normal"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium placeholder:font-normal"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
 
-              <div className="flex bg-slate-100 p-1 rounded-xl">
-                <button className="px-4 py-1.5 bg-white text-slate-900 text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5">
-                  All <span className="text-slate-400 font-medium">248</span>
-                </button>
-                <button className="px-4 py-1.5 text-slate-600 hover:text-slate-900 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                  Positive <span className="text-slate-400 font-medium">203</span>
-                </button>
-                <button className="px-4 py-1.5 text-slate-600 hover:text-slate-900 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors">
-                  <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
-                  Neutral <span className="text-slate-400 font-medium">30</span>
-                </button>
-              </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <button className="px-4 py-1 bg-white border border-slate-200 rounded-sm text-xs font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-50 transition-colors shadow-sm">
-                Response State: All <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-              <button className="px-4 py-1 bg-white border border-slate-200 rounded-sm text-xs font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-50 transition-colors shadow-sm">
-                All Stars <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-              <button className="px-4 py-1 bg-white border border-slate-200 rounded-sm text-xs font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-50 transition-colors shadow-sm">
-                Sort: Newest First <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-              <button className="px-4 py-1 bg-white border border-slate-200 rounded-sm text-xs font-semibold text-slate-700 flex items-center gap-2 hover:bg-slate-50 transition-colors shadow-sm">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                Last 30 Days
-              </button>
+              <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
+                <SelectTrigger className="w-[160px] h-7 px-4 py-1 bg-white border border-slate-200 rounded-sm text-xs font-semibold text-slate-800 hover:bg-slate-50 shadow-sm focus:ring-0 focus:ring-offset-0">
+                  <SelectValue placeholder="Response State: All" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectGroup>
+                    <SelectItem value="all" className="text-xs text-gray-800"><span className="text-gray-800"> All</span></SelectItem>
+                    <SelectItem value="positive" className="text-xs text-gray-800"><span className="text-gray-800">Positive</span></SelectItem>
+                    <SelectItem value="neutral" className="text-xs text-gray-800"><span className="text-gray-800">Neutral</span></SelectItem>
+                    <SelectItem value="negative" className="text-xs text-gray-800"><span className="text-gray-800">Negative</span></SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <Select value={ratingFilter} onValueChange={setRatingFilter}>
+                <SelectTrigger className="w-[120px] h-7 px-4 py-1 bg-white border border-slate-200 rounded-sm text-xs font-semibold text-slate-800 hover:bg-slate-50 shadow-sm focus:ring-0 focus:ring-offset-0">
+                  <SelectValue placeholder="All Stars" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectGroup>
+                    <div className="flex items-center gap-2"></div>
+                    <SelectItem value="0" className="text-xs text-gray-800">All Stars</SelectItem>
+                    <SelectItem value="5" className="text-xs text-gray-800">5 Stars</SelectItem>
+                    <SelectItem value="4" className="text-xs text-gray-800">4 Stars</SelectItem>
+                    <SelectItem value="3" className="text-xs text-gray-800">3 Stars</SelectItem>
+                    <SelectItem value="2" className="text-xs text-gray-800">2 Stars</SelectItem>
+                    <SelectItem value="1" className="text-xs text-gray-800">1 Star</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <Select value={sortFilter} onValueChange={setSortFilter}>
+                <SelectTrigger className="w-[160px] h-7 px-4 py-1 bg-white border border-slate-200 rounded-sm text-xs font-semibold text-slate-800 hover:bg-slate-50 shadow-sm focus:ring-0 focus:ring-offset-0">
+                  <SelectValue placeholder="Sort: Newest First" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectGroup>
+                    <SelectItem value="newest" className="text-xs text-gray-800">Sort: Newest First</SelectItem>
+                    <SelectItem value="oldest" className="text-xs text-gray-800">Sort: Oldest First</SelectItem>
+                    <SelectItem value="highest" className="text-xs text-gray-800">Highest Rated</SelectItem>
+                    <SelectItem value="lowest" className="text-xs text-gray-800">Lowest Rated</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger className="w-[150px] h-7 px-4 py-1 bg-white border border-slate-200 rounded-sm text-xs font-semibold text-slate-800 hover:bg-slate-50 shadow-sm focus:ring-0 focus:ring-offset-0">
+                  <SelectValue placeholder="Last 30 Days" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectGroup>
+                    <SelectItem value="all" className="text-xs text-gray-800">All Time</SelectItem>
+                    <SelectItem value="30days" className="text-xs text-gray-800">Last 30 Days</SelectItem>
+                    <SelectItem value="7days" className="text-xs text-gray-800">Last 7 Days</SelectItem>
+                    <SelectItem value="24hours" className="text-xs text-gray-800">Last 24 Hours</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </header>
@@ -299,7 +323,7 @@ export default function ReviewsPage() {
 
             {/* Table Body */}
             <div className="divide-y divide-slate-100 bg-white">
-              {mockReviews.map((review) => (
+              {uiReviews.map((review) => (
                 <div
                   key={review.id}
                   className={`grid grid-cols-12 gap-4 px-6 py-5 items-center group cursor-pointer transition-colors ${selectedReviewId === review.id ? 'bg-blue-50/40 relative' : 'hover:bg-slate-50'}`}
@@ -345,12 +369,12 @@ export default function ReviewsPage() {
 
                   <div className="col-span-2 flex items-center">
                     <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold shadow-sm ${review.sentiment === 'Positive' ? 'bg-emerald-100 text-emerald-700' :
-                        review.sentiment === 'Neutral' ? 'bg-slate-100 text-slate-600' :
-                          'bg-rose-100 text-rose-700'
+                      review.sentiment === 'Neutral' ? 'bg-slate-100 text-slate-600' :
+                        'bg-rose-100 text-rose-700'
                       }`}>
                       <div className={`w-1.5 h-1.5 rounded-full ${review.sentiment === 'Positive' ? 'bg-emerald-500' :
-                          review.sentiment === 'Neutral' ? 'bg-slate-500' :
-                            'bg-rose-500'
+                        review.sentiment === 'Neutral' ? 'bg-slate-500' :
+                          'bg-rose-500'
                         }`}></div>
                       {review.sentiment}
                     </div>
@@ -366,10 +390,10 @@ export default function ReviewsPage() {
                         {review.aiState === 'High Priority' && <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />}
 
                         <span className={`text-[12px] font-bold ${review.aiState === 'AI Ready' ? 'text-blue-600' :
-                            review.aiState === 'Needs Response' ? 'text-rose-600' :
-                              review.aiState === 'Published' ? 'text-emerald-600' :
-                                review.aiState === 'Draft Pending' ? 'text-amber-600' :
-                                  'text-rose-700'
+                          review.aiState === 'Needs Response' ? 'text-rose-600' :
+                            review.aiState === 'Published' ? 'text-emerald-600' :
+                              review.aiState === 'Draft Pending' ? 'text-amber-600' :
+                                'text-rose-700'
                           }`}>
                           {review.aiState}
                         </span>
@@ -382,8 +406,8 @@ export default function ReviewsPage() {
 
                   <div className="col-span-1 flex items-center justify-end pr-4">
                     <button className={`px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${review.action === 'RESPOND' ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-md' :
-                        review.action === 'VIEW' ? 'bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 shadow-sm' :
-                          'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+                      review.action === 'VIEW' ? 'bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 shadow-sm' :
+                        'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
                       }`}>
                       {review.action}
                     </button>

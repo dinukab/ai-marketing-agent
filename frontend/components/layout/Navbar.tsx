@@ -72,7 +72,7 @@ export default function Navbar() {
         </button>
 
         {/* User Profile / Avatar */}
-        <button className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-white ring-2 ring-white shadow-sm hover:ring-slate-100 transition-all ml-1">
+        <button className="w-8 h-8 bg-slate-950 rounded-full flex items-center justify-center text-white ring-2 ring-white shadow-sm hover:ring-slate-100 transition-all ml-1">
           <User className="w-4 h-4" />
         </button>
       </div>

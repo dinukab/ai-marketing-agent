@@ -49,7 +49,7 @@ def login(response: Response, login_data: LoginRequest, db: Session = Depends(ge
         secure=False, # Set to True in production with HTTPS
         max_age=3600
     )
-    
+    # Return token and user info in response body
     return {
         "access_token": access_token, 
         "token_type": "bearer",

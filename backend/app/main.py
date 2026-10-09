@@ -12,6 +12,7 @@ import uvicorn
 # pyrefly: ignore [missing-import]
 from app.db.database import get_db, engine
 from app.db import models
+from app.models.review import Review
 
 # Tables auto create karanawa
 models.Base.metadata.create_all(bind=engine)
@@ -33,6 +34,9 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+
+from app.routers import review
+app.include_router(review.router, prefix="/api/reviews", tags=["reviews"])
 
 @app.get("/api/health")
 def health_check(db: Session = Depends(get_db)):

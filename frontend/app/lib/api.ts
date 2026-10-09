@@ -78,3 +78,77 @@ export async function resetPassword(data: { token: string; new_password: string 
 
   return result;
 }
+
+export async function fetchReviews(
+  businessId?: number, 
+  search?: string, 
+  sentiment?: string,
+  rating?: number,
+  sort?: string,
+  dateRange?: string
+) {
+  const queryParams = new URLSearchParams();
+  if (businessId) queryParams.append('business_id', businessId.toString());
+  if (search) queryParams.append('search', search);
+  if (sentiment && sentiment !== 'all') queryParams.append('sentiment', sentiment);
+  if (rating && rating > 0) queryParams.append('rating', rating.toString());
+  if (sort && sort !== 'newest') queryParams.append('sort', sort);
+  if (dateRange && dateRange !== '30days') queryParams.append('date_range', dateRange);
+  
+  const queryString = queryParams.toString();
+  const url = `${API_URL}/api/reviews${queryString ? `?${queryString}` : ''}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.detail || "Failed to fetch reviews");
+  }
+
+  return result;
+}
+
+export async function fetchReviewStats(businessId?: number) {
+  const queryParams = new URLSearchParams();
+  if (businessId) queryParams.append('business_id', businessId.toString());
+  
+  const queryString = queryParams.toString();
+  const url = `${API_URL}/api/reviews/stats${queryString ? `?${queryString}` : ''}`;
+  
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.detail || "Failed to fetch review stats");
+  }
+
+  return result;
+}
+
+export async function seedReviews(businessId: number) {
+  const response = await fetch(`${API_URL}/api/reviews/seed?business_id=${businessId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.detail || "Failed to seed reviews");
+  }
+
+  return result;
+}

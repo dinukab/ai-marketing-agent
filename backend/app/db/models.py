@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, Float, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from .database import Base
@@ -33,6 +33,7 @@ class Business(Base):
 
     # Relationship - Business eka aithi owner
     owner = relationship("User", back_populates="businesses")
+    reviews = relationship("Review", back_populates="business")
 
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"
@@ -47,3 +48,4 @@ class PasswordResetToken(Base):
 
     # Relationship
     user = relationship("User", back_populates="reset_tokens")
+
