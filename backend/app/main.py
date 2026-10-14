@@ -20,6 +20,7 @@ models.Base.metadata.create_all(bind=engine)
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import auth
 
+
 app = FastAPI(
     title="AI Marketing Agent API",
     version="1.0.0"
@@ -36,7 +37,10 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
 from app.routers import review
+from app.routers.ai_analysis import router as ai_analysis_router
+
 app.include_router(review.router, prefix="/api/reviews", tags=["reviews"])
+app.include_router(ai_analysis_router)
 
 @app.get("/api/health")
 def health_check(db: Session = Depends(get_db)):
