@@ -20,7 +20,10 @@ export default function LoginPage() {
         setError('');
         setIsLoading(true);
         try {
-            await loginUser({ email, password });
+            const res = await loginUser({ email, password });
+            if (res && res.user && res.user.name) {
+                localStorage.setItem('userName', res.user.name);
+            }
             router.push('/dashboard');
         } catch (err: any) {
             setError(err.message || 'Login failed');

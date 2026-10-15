@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 # Hardcoded API key as requested
+
 resend.api_key = os.getenv("RESEND_API_KEY")
 
 def send_password_reset_email(to_email: str, reset_token: str):

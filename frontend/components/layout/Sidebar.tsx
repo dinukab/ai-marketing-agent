@@ -16,13 +16,34 @@ import {
   HelpCircle,
   Settings,
   LogOut,
-  User
+  User,
+  LucideIcon
 } from 'lucide-react';
+
+type NavItem = {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  badge?: {
+    text: string;
+    color: string;
+  };
+  status?: {
+    text: string;
+    color: string;
+    dot: string;
+  };
+};
+
+type NavGroup = {
+  section: string;
+  items: NavItem[];
+};
 
 export default function Sidebar() {
   const pathname = usePathname();
 
-  const navItems = [
+  const navItems: NavGroup[] = [
     {
       section: "MAIN",
       items: [
@@ -56,16 +77,15 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-72 h-screen bg-slate-50 border-r border-slate-200 flex flex-col font-sans">
+    <aside className="w-72 h-screen bg-slate-950 border-r border-slate-200 flex flex-col font-sans">
       {/* Logo Area */}
       <div className="p-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm">
+          <div className="w-9 h-9 bg-[#5636f5] rounded-lg flex items-center justify-center text-white font-bold text-md shadow-md">
             RP
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-slate-900 text-[15px] leading-tight">ReviewPilot AI</span>
-            <span className="text-[10px] text-slate-500 font-semibold tracking-wider">V2.4 PRO</span>
+            <span className="font-bold text-slate-10 text-[15px] leading-tight">ReviewPilot AI</span>
           </div>
         </div>
         <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-100 rounded-full">
@@ -78,7 +98,7 @@ export default function Sidebar() {
       <div className="flex-1 overflow-y-auto px-4 py-2 space-y-8 scrollbar-hide">
         {navItems.map((group, idx) => (
           <div key={idx}>
-            <h3 className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+            <h3 className="px-3 text-[10px] font-bold text-slate-200 uppercase tracking-widest mb-3">
               {group.section}
             </h3>
             <div className="space-y-1">
@@ -93,11 +113,11 @@ export default function Sidebar() {
                     className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group ${
                       active 
                         ? "bg-slate-900 text-white shadow-md shadow-slate-900/10" 
-                        : "text-slate-500 hover:bg-slate-200/50 hover:text-slate-900"
+                        : "text-slate-100 hover:bg-slate-900/50 hover:text-slate-300"
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <Icon className={`w-5 h-5 transition-colors ${active ? "text-white" : "text-slate-400 group-hover:text-slate-700"}`} />
+                      <Icon className={`w-5 h-5 transition-colors ${active ? "text-white" : "text-slate-300 group-hover:text-slate-300"}`} />
                       <span className={`text-[13px] font-medium ${active ? "font-semibold" : ""}`}>
                         {item.name}
                       </span>

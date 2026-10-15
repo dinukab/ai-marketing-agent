@@ -12,12 +12,15 @@ import uvicorn
 # pyrefly: ignore [missing-import]
 from app.db.database import get_db, engine
 from app.db import models
+from app.models.review import Review
+from app.models.review_analysis import ReviewAnalysis
 
-# Tables auto create karanawa
+# auto create the tables
 models.Base.metadata.create_all(bind=engine)
 
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import auth
+
 
 app = FastAPI(
     title="AI Marketing Agent API",
@@ -32,7 +35,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(auth.router)
+
+from app.routers import review
+from app.routers.ai_analysis import router as ai_analysis_router
+
+app.include_router(review.router, prefix="/api/reviews", tags=["reviews"])
+app.include_router(ai_analysis_router)
 
 @app.get("/api/health")
 def health_check(db: Session = Depends(get_db)):
@@ -48,9 +57,6 @@ def health_check(db: Session = Depends(get_db)):
         "database": db_status
     }
 
-from app.api import auth
-
-app.include_router(auth.router)
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)

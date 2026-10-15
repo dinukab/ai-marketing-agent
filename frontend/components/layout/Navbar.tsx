@@ -21,7 +21,7 @@ export default function Navbar() {
         
         {/* Breadcrumbs */}
         <div className="flex items-center gap-3 text-sm font-semibold tracking-tight">
-          <span className="text-slate-400 uppercase tracking-widest text-[10px] font-bold leading-tight">ReviewPilot<br/>AI</span>
+          <span className="text-slate-400 uppercase tracking-widest text-[10px] font-bold leading-tight">ReviewPilot AI</span>
           <span className="text-slate-200 text-lg font-light">/</span>
           <span className="text-slate-900 font-bold text-[15px]">{currentPage}</span>
         </div>
@@ -48,7 +48,7 @@ export default function Navbar() {
         
         {/* Business Selector */}
         <button className="hidden sm:flex items-center gap-2.5 bg-blue-50/80 hover:bg-blue-100/50 text-slate-700 px-3 py-2 rounded-lg transition-colors border border-blue-100/50">
-          <Store className="w-4 h-4 text-blue-600" />
+          <Store className="w-4 h-4 text-[#5636f5]" />
           <div className="flex flex-col items-start text-left">
             <span className="text-[13px] font-bold leading-none text-slate-900">Dinuka Cafe</span>
           </div>
@@ -57,7 +57,7 @@ export default function Navbar() {
 
         {/* Sync Status */}
         <div className="hidden lg:flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-          <RefreshCw className="w-3.5 h-3.5 text-blue-600" />
+          <RefreshCw className="w-3.5 h-3.5 text-[#5636f5]" />
           <span className="text-[12px] font-semibold text-slate-500">Synced 12m ago</span>
         </div>
 
@@ -72,7 +72,7 @@ export default function Navbar() {
         </button>
 
         {/* User Profile / Avatar */}
-        <button className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-white ring-2 ring-white shadow-sm hover:ring-slate-100 transition-all ml-1">
+        <button className="w-8 h-8 bg-slate-950 rounded-full flex items-center justify-center text-white ring-2 ring-white shadow-sm hover:ring-slate-100 transition-all ml-1">
           <User className="w-4 h-4" />
         </button>
       </div>
