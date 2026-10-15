@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from datetime import datetime
 
 class ReviewBase(BaseModel):
@@ -39,8 +39,6 @@ class PaginatedReviewResponse(BaseModel):
     limit: int
     total_pages: int
 
-from typing import Dict
-
 class ReviewStats(BaseModel):
     total_reviews: int
     positive_count: int
@@ -75,3 +73,18 @@ class BulkReviewAnalysisResponse(BaseModel):
     remaining: int
     details: Optional[List[BulkReviewAnalysisItem]] = None
 
+
+class GenerateReplyRequest(BaseModel):
+    tone: Optional[str] = Field(None, max_length=50, description="Optional override for AI reply tone")
+
+
+class EditReplyRequest(BaseModel):
+    reply: Optional[str] = Field(None, max_length=5000, description="The updated reply text")
+    ai_response: Optional[str] = Field(None, max_length=5000, description="Alternative field for updated reply text")
+
+
+class ReplyActionResponse(BaseModel):
+    message: str
+    review_id: int
+    reply: Optional[str] = None
+    response_status: Optional[str] = None

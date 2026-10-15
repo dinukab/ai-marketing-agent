@@ -14,6 +14,7 @@ from app.models.review import Review
 from app.models.review_analysis import ReviewAnalysis
 from app.core.dependencies import get_current_user
 from app.services.review_analysis_service import analyze_review
+from app.services.reply_generation_service import generate_review_reply
 from app.schemas.review import (
     ReviewResponse,
     ReviewCreate,
@@ -23,6 +24,9 @@ from app.schemas.review import (
     BulkReviewAnalysisResponse,
     BulkReviewAnalysisItem,
     BulkReviewAnalysisRequest,
+    GenerateReplyRequest,
+    EditReplyRequest,
+    ReplyActionResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -278,6 +282,212 @@ def analyze_all_reviews(
         remaining=remaining_count,
         details=details,
     )
+
+
+
+def get_user_review_or_404(
+    review_id: int,
+    db: Session,
+    user_id: int,
+) -> tuple[Review, db_models.Business]:
+    """Find a review and verify that the current user owns its business."""
+    review = db.query(Review).filter(Review.id == review_id).first()
+    if not review:
+        raise HTTPException(
+            status_code=404,
+            detail="Review not found",
+        )
+
+    business = (
+        db.query(db_models.Business)
+        .filter(
+            db_models.Business.id == review.business_id,
+            db_models.Business.owner_id == user_id,
+        )
+        .first()
+    )
+    if not business:
+        raise HTTPException(
+            status_code=404,
+            detail="Review not found",
+        )
+
+    return review, business
+
+
+@router.post("/{review_id}/generate-reply", response_model=ReplyActionResponse)
+def generate_reply_for_review(
+    review_id: int,
+    request: Optional[GenerateReplyRequest] = None,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """
+    Generate an AI-powered personalized reply draft using Gemini based on
+    review text, rating, sentiment, business AI tone, and custom rules.
+    Saves reply as a draft without publishing.
+    """
+    review, business = get_user_review_or_404(review_id, db, current_user.id)
+
+    if not review.review_text or not review.review_text.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="This review has no text",
+        )
+
+    selected_tone = (request.tone if request and request.tone else None) or business.ai_tone or "Professional"
+
+    try:
+        reply = generate_review_reply(
+            review_text=review.review_text,
+            rating=review.rating,
+            business_name=business.name,
+            ai_tone=selected_tone,
+            custom_rules=business.custom_rules,
+            sentiment=review.sentiment,
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not generate an AI reply",
+        )
+
+    try:
+        review.ai_response = reply
+        review.response_status = "Draft"
+        review.updated_at = datetime.now(timezone.utc)
+
+        db.commit()
+        db.refresh(review)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not save the reply",
+        )
+
+    return {
+        "message": "AI reply generated successfully",
+        "review_id": review.id,
+        "reply": review.ai_response,
+        "response_status": review.response_status,
+    }
+
+
+@router.patch("/{review_id}/edit-reply", response_model=ReplyActionResponse)
+@router.patch("/{review_id}/reply", response_model=ReplyActionResponse)
+@router.put("/{review_id}/reply", response_model=ReplyActionResponse)
+def edit_review_reply(
+    review_id: int,
+    request: EditReplyRequest,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """Edit the reply draft for a review while preserving Draft status."""
+    review, _ = get_user_review_or_404(review_id, db, current_user.id)
+
+    reply_text = request.reply if request.reply is not None else request.ai_response
+    if not reply_text or not reply_text.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="Reply text cannot be empty",
+        )
+
+    try:
+        review.ai_response = reply_text.strip()
+        review.response_status = "Draft"
+        review.updated_at = datetime.now(timezone.utc)
+
+        db.commit()
+        db.refresh(review)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not update the reply",
+        )
+
+    return {
+        "message": "Draft reply updated successfully",
+        "review_id": review.id,
+        "reply": review.ai_response,
+        "response_status": review.response_status,
+    }
+
+
+@router.post("/{review_id}/approve-reply", response_model=ReplyActionResponse)
+@router.post("/{review_id}/approve", response_model=ReplyActionResponse)
+@router.post("/{review_id}/reply/approve", response_model=ReplyActionResponse)
+def approve_review_reply(
+    review_id: int,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """
+    Approve an existing draft reply.
+    Important: Replies are marked 'Approved' in the database and are NEVER
+    published automatically to external platforms.
+    """
+    review, _ = get_user_review_or_404(review_id, db, current_user.id)
+
+    if not review.ai_response or not review.ai_response.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="No draft reply to approve",
+        )
+
+    try:
+        review.response_status = "Approved"
+        review.updated_at = datetime.now(timezone.utc)
+
+        db.commit()
+        db.refresh(review)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not approve the reply",
+        )
+
+    return {
+        "message": "Draft reply approved successfully. It will not be published automatically.",
+        "review_id": review.id,
+        "reply": review.ai_response,
+        "response_status": review.response_status,
+    }
+
+
+@router.post("/{review_id}/reject-reply", response_model=ReplyActionResponse)
+@router.post("/{review_id}/reject", response_model=ReplyActionResponse)
+@router.post("/{review_id}/reply/reject", response_model=ReplyActionResponse)
+def reject_review_reply(
+    review_id: int,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """Reject an existing draft reply, updating response status to 'Rejected'."""
+    review, _ = get_user_review_or_404(review_id, db, current_user.id)
+
+    try:
+        review.response_status = "Rejected"
+        review.updated_at = datetime.now(timezone.utc)
+
+        db.commit()
+        db.refresh(review)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Could not reject the reply",
+        )
+
+    return {
+        "message": "Draft reply rejected successfully",
+        "review_id": review.id,
+        "reply": review.ai_response,
+        "response_status": review.response_status,
+    }
+
 
 
 @router.get("/{review_id}", response_model=ReviewResponse)
