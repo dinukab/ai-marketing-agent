@@ -4,6 +4,7 @@ from sqlalchemy import or_, func
 from typing import List, Optional
 import math
 
+import logging
 from datetime import datetime, timedelta, timezone
 import os
 
@@ -13,7 +14,18 @@ from app.models.review import Review
 from app.models.review_analysis import ReviewAnalysis
 from app.core.dependencies import get_current_user
 from app.services.review_analysis_service import analyze_review
-from app.schemas.review import ReviewResponse, ReviewCreate, ReviewUpdate, PaginatedReviewResponse, ReviewStats
+from app.schemas.review import (
+    ReviewResponse,
+    ReviewCreate,
+    ReviewUpdate,
+    PaginatedReviewResponse,
+    ReviewStats,
+    BulkReviewAnalysisResponse,
+    BulkReviewAnalysisItem,
+    BulkReviewAnalysisRequest,
+)
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -119,6 +131,152 @@ def get_review_stats(
         awaiting_response_count=awaiting_response_count,
         answered_count=answered_count,
         rating_distribution=distribution
+    )
+
+
+@router.post(
+    "/businesses/{business_id}/analyze-all",
+    response_model=BulkReviewAnalysisResponse,
+    summary="Bulk analyze reviews for a business",
+)
+def analyze_all_reviews(
+    business_id: int,
+    batch_size: Optional[int] = Query(None, ge=1, le=50, description="Max reviews to analyze in this batch"),
+    limit: Optional[int] = Query(None, ge=1, le=50, description="Alias for batch_size"),
+    body: Optional[BulkReviewAnalysisRequest] = None,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    # 1. Verify business existence
+    business = (
+        db.query(db_models.Business)
+        .filter(db_models.Business.id == business_id)
+        .first()
+    )
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+
+    # 2. Verify business ownership
+    if business.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have permission to access this business",
+        )
+
+    # 3. Determine safe batch size (default: 10, max: 50)
+    req_batch = body.batch_size if body else None
+    effective_limit = batch_size or limit or req_batch or 10
+    effective_limit = min(max(1, effective_limit), 50)
+
+    # 4. Find unanalyzed reviews for this business
+    unanalyzed_query = (
+        db.query(Review)
+        .filter(
+            Review.business_id == business_id,
+            ~Review.analyses.any(),
+        )
+        .order_by(
+            func.coalesce(Review.review_text, "").desc(),
+            Review.created_at.desc(),
+            Review.id.asc(),
+        )
+    )
+
+    total_unanalyzed = unanalyzed_query.count()
+
+    if total_unanalyzed == 0:
+        return BulkReviewAnalysisResponse(
+            message="No unanalyzed reviews found for this business",
+            business_id=business_id,
+            total_unanalyzed=0,
+            analyzed=0,
+            skipped=0,
+            failed=0,
+            remaining=0,
+            details=[],
+        )
+
+    reviews_to_process = unanalyzed_query.limit(effective_limit).all()
+
+    analyzed_count = 0
+    skipped_count = 0
+    failed_count = 0
+    details: List[BulkReviewAnalysisItem] = []
+
+    for review in reviews_to_process:
+        # Check for empty or whitespace-only review text
+        if not review.review_text or not review.review_text.strip():
+            skipped_count += 1
+            details.append(
+                BulkReviewAnalysisItem(
+                    review_id=review.id,
+                    status="skipped",
+                    reason="Review text is empty or blank",
+                )
+            )
+            continue
+
+        try:
+            # AI sentiment analysis via Gemini
+            analysis_result = analyze_review(review.review_text)
+
+            # Persist to review_analyses
+            analysis = ReviewAnalysis(
+                review_id=review.id,
+                sentiment=analysis_result.sentiment,
+                emotion=analysis_result.emotion,
+                topics=analysis_result.topics,
+                issues=analysis_result.issues,
+                summary=analysis_result.summary,
+                confidence=analysis_result.confidence,
+                model_name=os.getenv("GEMINI_MODEL") or "gemini-flash-lite-latest",
+            )
+            db.add(analysis)
+
+            # Update review's existing sentiment fields
+            review.sentiment = analysis_result.sentiment
+            review.sentiment_score = analysis_result.confidence
+            review.topics = analysis_result.topics
+            review.updated_at = datetime.now(timezone.utc)
+
+            # Commit changes for this review
+            db.commit()
+            db.refresh(review)
+
+            analyzed_count += 1
+            details.append(
+                BulkReviewAnalysisItem(
+                    review_id=review.id,
+                    status="analyzed",
+                    sentiment=analysis_result.sentiment,
+                    confidence=analysis_result.confidence,
+                )
+            )
+
+        except Exception as err:
+            db.rollback()
+            logger.error(f"Failed to analyze review ID {review.id}: {err}")
+            failed_count += 1
+            details.append(
+                BulkReviewAnalysisItem(
+                    review_id=review.id,
+                    status="failed",
+                    error=str(err),
+                )
+            )
+
+    # 5. Compute remaining count of unanalyzed reviews
+    remaining_count = max(0, total_unanalyzed - analyzed_count - skipped_count)
+
+    return BulkReviewAnalysisResponse(
+        message=f"Analyzed {analyzed_count} reviews successfully",
+        business_id=business_id,
+        total_unanalyzed=total_unanalyzed,
+        analyzed=analyzed_count,
+        skipped=skipped_count,
+        failed=failed_count,
+        remaining=remaining_count,
+        details=details,
     )
 
 

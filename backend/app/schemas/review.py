@@ -51,3 +51,27 @@ class ReviewStats(BaseModel):
     answered_count: int
     rating_distribution: Dict[int, int]
 
+
+class BulkReviewAnalysisRequest(BaseModel):
+    batch_size: Optional[int] = Field(None, ge=1, le=50, description="Maximum number of reviews to analyze in this batch")
+
+
+class BulkReviewAnalysisItem(BaseModel):
+    review_id: int
+    status: str
+    sentiment: Optional[str] = None
+    confidence: Optional[float] = None
+    reason: Optional[str] = None
+    error: Optional[str] = None
+
+
+class BulkReviewAnalysisResponse(BaseModel):
+    message: str
+    business_id: int
+    total_unanalyzed: int
+    analyzed: int
+    skipped: int
+    failed: int
+    remaining: int
+    details: Optional[List[BulkReviewAnalysisItem]] = None
+
