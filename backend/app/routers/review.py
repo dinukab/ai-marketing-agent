@@ -4,14 +4,19 @@ from sqlalchemy import or_, func
 from typing import List, Optional
 import math
 
+from datetime import datetime, timedelta, timezone
+import os
+
 from app.db.database import get_db
 from app.db import models as db_models
 from app.models.review import Review
+from app.models.review_analysis import ReviewAnalysis
+from app.core.dependencies import get_current_user
+from app.services.review_analysis_service import analyze_review
 from app.schemas.review import ReviewResponse, ReviewCreate, ReviewUpdate, PaginatedReviewResponse, ReviewStats
 
 router = APIRouter()
 
-from datetime import datetime, timedelta, timezone
 
 @router.get("/", response_model=PaginatedReviewResponse)
 def get_reviews(
@@ -160,3 +165,83 @@ def delete_review(review_id: int, db: Session = Depends(get_db)):
     db.delete(db_review)
     db.commit()
     return {"message": "Review deleted successfully"}
+
+
+@router.post("/{review_id}/analyze")
+def analyze_review_endpoint(
+    review_id: int,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    # Fetch the review
+    review = db.query(Review).filter(Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    # Fetch the Business and verify ownership
+    business = (
+        db.query(db_models.Business)
+        .filter(db_models.Business.id == review.business_id)
+        .first()
+    )
+    if not business or business.owner_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    if not review.review_text or not review.review_text.strip():
+        raise HTTPException(status_code=400, detail="Review text cannot be empty")
+
+    # Call analyze_review from the analysis service
+    try:
+        analysis_result = analyze_review(review.review_text)
+    except ValueError as err:
+        raise HTTPException(status_code=422, detail=str(err))
+    except Exception as err:
+        raise HTTPException(status_code=502, detail=f"AI analysis failed: {str(err)}")
+
+    # Save the result in ReviewAnalysis
+    analysis = ReviewAnalysis(
+        review_id=review.id,
+        sentiment=analysis_result.sentiment,
+        emotion=analysis_result.emotion,
+        topics=analysis_result.topics,
+        issues=analysis_result.issues,
+        summary=analysis_result.summary,
+        confidence=analysis_result.confidence,
+        model_name=os.getenv("GEMINI_MODEL") or "gemini-flash-lite-latest",
+    )
+    db.add(analysis)
+
+    # Update original review's sentiment, sentiment_score, topics, and updated_at
+    review.sentiment = analysis_result.sentiment
+    review.sentiment_score = analysis_result.confidence
+    review.topics = analysis_result.topics
+    review.updated_at = datetime.now(timezone.utc)
+
+    # Commit and refresh
+    db.commit()
+    db.refresh(analysis)
+    db.refresh(review)
+
+    return {
+        "message": "Review analyzed successfully",
+        "analysis": {
+            "id": analysis.id,
+            "review_id": analysis.review_id,
+            "sentiment": analysis.sentiment,
+            "emotion": analysis.emotion,
+            "topics": analysis.topics,
+            "issues": analysis.issues,
+            "summary": analysis.summary,
+            "confidence": analysis.confidence,
+            "model_name": analysis.model_name,
+            "created_at": analysis.created_at,
+        },
+        "review": {
+            "id": review.id,
+            "sentiment": review.sentiment,
+            "sentiment_score": review.sentiment_score,
+            "topics": review.topics,
+            "updated_at": review.updated_at,
+        },
+    }
+

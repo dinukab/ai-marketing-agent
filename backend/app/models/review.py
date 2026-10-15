@@ -26,3 +26,10 @@ class Review(Base):
 
     # Relationship
     business = relationship("Business", back_populates="reviews")
+
+    analyses = relationship(
+        "ReviewAnalysis",
+        back_populates="review",
+        cascade="all, delete-orphan",
+    )
+
