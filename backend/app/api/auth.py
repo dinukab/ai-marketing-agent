@@ -4,12 +4,83 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 from app.db.database import get_db
 from app.db import models
+from app.models.review import Review
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, MessageResponse, ForgotPasswordRequest, ResetPasswordRequest
-from app.schemas.user import UserResponse
+from app.schemas.user import UserResponse, UserMeResponse
 from app.core.security import hash_password, verify_password, create_access_token, generate_password_reset_token, hash_token
+from app.core.dependencies import get_current_user
 from app.services.email_service import send_password_reset_email
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+def seed_default_reviews_for_business(business_id: int, db: Session):
+    existing = db.query(Review).filter(Review.business_id == business_id).first()
+    if existing:
+        return
+    sample_reviews = [
+        Review(
+            business_id=business_id,
+            google_review_id=f"g_rev_{business_id}_1",
+            customer_name="Sarah M.",
+            customer_avatar="SM",
+            rating=5,
+            review_text="The service was excellent. The staff were very friendly and the flat white was perfect. Definitely coming back for their weekend brunch pastries!",
+            review_date=datetime.now(timezone.utc) - timedelta(days=1),
+            sentiment="Positive",
+            sentiment_score=0.96,
+            topics=["Customer Service", "Staff", "Coffee Quality"],
+            ai_response=None,
+            response_status="Needs Response",
+            source="Google Local Guide • Level 4"
+        ),
+        Review(
+            business_id=business_id,
+            google_review_id=f"g_rev_{business_id}_2",
+            customer_name="John D.",
+            customer_avatar="JD",
+            rating=3,
+            review_text="The food was good, but the delivery took much longer than expected. It arrived lukewarm.",
+            review_date=datetime.now(timezone.utc) - timedelta(days=2),
+            sentiment="Neutral",
+            sentiment_score=0.45,
+            topics=["Food Quality", "Delivery Delays"],
+            ai_response=None,
+            response_status="Needs Response",
+            source="Google"
+        ),
+        Review(
+            business_id=business_id,
+            google_review_id=f"g_rev_{business_id}_3",
+            customer_name="Sophia K.",
+            customer_avatar="SK",
+            rating=1,
+            review_text="Very disappointing experience. The order was completely wrong and the cashier was rude when I pointed it out.",
+            review_date=datetime.now(timezone.utc) - timedelta(days=3),
+            sentiment="Negative",
+            sentiment_score=0.15,
+            topics=["Staff Attitude", "Order Accuracy"],
+            ai_response=None,
+            response_status="Needs Response",
+            source="Google"
+        ),
+        Review(
+            business_id=business_id,
+            google_review_id=f"g_rev_{business_id}_4",
+            customer_name="Michael R.",
+            customer_avatar="MR",
+            rating=5,
+            review_text="Outstanding brunch spot! The truffle avocado toast and seasonal matcha latte are world-class.",
+            review_date=datetime.now(timezone.utc) - timedelta(days=4),
+            sentiment="Positive",
+            sentiment_score=0.98,
+            topics=["Atmosphere", "Food Quality", "Beverage Craft"],
+            ai_response="Thank you Michael! We're thrilled you loved the truffle avocado toast and matcha latte. See you soon!",
+            response_status="Draft",
+            source="Google Local Guide • Level 6"
+        )
+    ]
+    db.add_all(sample_reviews)
+    db.commit()
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user: RegisterRequest, db: Session = Depends(get_db)):
@@ -27,6 +98,18 @@ def register(user: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     
+    # Auto-create a default business for the user
+    business_name = f"{new_user.name}'s Business" if new_user.name else "My Business"
+    new_business = models.Business(
+        name=business_name,
+        ai_tone="Warm & Friendly",
+        owner_id=new_user.id
+    )
+    db.add(new_business)
+    db.commit()
+    db.refresh(new_business)
+    seed_default_reviews_for_business(new_business.id, db)
+
     return new_user
 
 @router.post("/login", response_model=TokenResponse)
@@ -40,14 +123,15 @@ def login(response: Response, login_data: LoginRequest, db: Session = Depends(ge
 
     access_token = create_access_token(data={"sub": str(user.id)})
     
-    # Set HttpOnly cookie
+    # Set HttpOnly cookie with path="/" for all API routes
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
         httponly=True,
         samesite="lax",
         secure=False, # Set to True in production with HTTPS
-        max_age=3600
+        path="/",
+        max_age=86400
     )
     # Return token and user info in response body
     return {
@@ -60,11 +144,35 @@ def login(response: Response, login_data: LoginRequest, db: Session = Depends(ge
         }
     }
 
+@router.get("/me", response_model=UserMeResponse)
+def get_me(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Return the authenticated user profile and their businesses."""
+    businesses = db.query(models.Business).filter(models.Business.owner_id == current_user.id).all()
+    if not businesses:
+        business_name = f"{current_user.name}'s Business" if current_user.name else "My Business"
+        new_business = models.Business(
+            name=business_name,
+            ai_tone="Warm & Friendly",
+            owner_id=current_user.id
+        )
+        db.add(new_business)
+        db.commit()
+        db.refresh(new_business)
+        seed_default_reviews_for_business(new_business.id, db)
+        businesses = [new_business]
+
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "businesses": businesses
+    }
 
 @router.post("/logout", response_model=MessageResponse)
 def logout(response: Response):
     response.delete_cookie(
         key="access_token",
+        path="/",
         httponly=True,
         samesite="lax",
         secure=False

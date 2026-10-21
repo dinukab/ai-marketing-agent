@@ -1,17 +1,28 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Search, Command, Store, ChevronDown, RefreshCw, Bell, User } from 'lucide-react';
+import { getCurrentUser, UserProfile } from '../../app/lib/api';
+import { Search, Command, Store, ChevronDown, RefreshCw, Bell, User, LogIn } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
-  
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    getCurrentUser()
+      .then(user => setCurrentUser(user))
+      .catch(() => setCurrentUser(null));
+  }, []);
+
+  const businessName = currentUser?.businesses?.[0]?.name || "Dinuka Cafe";
+
   // Create breadcrumbs based on pathname
   const pathParts = pathname?.split('/').filter(Boolean) || [];
   const currentPage = pathParts.length > 1 
     ? pathParts[pathParts.length - 1].charAt(0).toUpperCase() + pathParts[pathParts.length - 1].slice(1).replace('-', ' ') 
-    : 'Dashboard';
+    : 'Reviews';
 
   return (
     <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6 sticky top-0 z-10 font-sans shadow-sm shadow-slate-100/50">
@@ -47,34 +58,41 @@ export default function Navbar() {
       <div className="flex items-center gap-4">
         
         {/* Business Selector */}
-        <button className="hidden sm:flex items-center gap-2.5 bg-blue-50/80 hover:bg-blue-100/50 text-slate-700 px-3 py-2 rounded-lg transition-colors border border-blue-100/50">
+        <div className="hidden sm:flex items-center gap-2 bg-blue-50/80 text-slate-700 px-3 py-1.5 rounded-lg border border-blue-100/60 shadow-sm">
           <Store className="w-4 h-4 text-[#5636f5]" />
           <div className="flex flex-col items-start text-left">
-            <span className="text-[13px] font-bold leading-none text-slate-900">Dinuka Cafe</span>
+            <span className="text-[13px] font-bold leading-none text-slate-900">{businessName}</span>
           </div>
-          <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
-        </button>
+        </div>
 
         {/* Sync Status */}
-        <div className="hidden lg:flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-          <RefreshCw className="w-3.5 h-3.5 text-[#5636f5]" />
-          <span className="text-[12px] font-semibold text-slate-500">Synced 12m ago</span>
+        <div className="hidden lg:flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+          <RefreshCw className="w-3.5 h-3.5 text-emerald-600 animate-spin-reverse" />
+          <span className="text-[11px] font-semibold text-slate-600">FastAPI Live</span>
         </div>
 
         {/* Divider */}
         <div className="hidden sm:block w-px h-6 bg-slate-200 mx-1"></div>
 
-        {/* Notifications */}
-        <button className="relative p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-full hover:bg-slate-50">
-          <Bell className="w-5 h-5" />
-          {/* Notification Dot */}
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 border-2 border-white rounded-full"></span>
-        </button>
-
-        {/* User Profile / Avatar */}
-        <button className="w-8 h-8 bg-slate-950 rounded-full flex items-center justify-center text-white ring-2 ring-white shadow-sm hover:ring-slate-100 transition-all ml-1">
-          <User className="w-4 h-4" />
-        </button>
+        {/* User Profile / Login status */}
+        {currentUser ? (
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm ring-2 ring-blue-100">
+              {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : "U"}
+            </div>
+            <div className="hidden md:flex flex-col text-left">
+              <span className="text-xs font-bold text-slate-900 leading-tight">{currentUser.name}</span>
+              <span className="text-[10px] text-slate-400 font-medium leading-tight">Session Active</span>
+            </div>
+          </div>
+        ) : (
+          <Link
+            href="/login"
+            className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-colors"
+          >
+            <LogIn className="w-3.5 h-3.5" /> Sign In
+          </Link>
+        )}
       </div>
 
     </header>

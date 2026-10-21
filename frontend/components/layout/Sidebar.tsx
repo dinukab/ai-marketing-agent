@@ -1,8 +1,9 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { getCurrentUser, logoutUser, UserProfile } from '../../app/lib/api';
 import { 
   LayoutDashboard, 
   MessageSquare, 
@@ -42,6 +43,24 @@ type NavGroup = {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    getCurrentUser()
+      .then(user => setCurrentUser(user))
+      .catch(() => setCurrentUser(null));
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch (e) {
+      console.warn("Logout error:", e);
+    }
+    setCurrentUser(null);
+    router.push('/login');
+  };
 
   const navItems: NavGroup[] = [
     {
@@ -156,19 +175,26 @@ export default function Sidebar() {
               <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-white rounded-full"></div>
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-bold text-slate-900 truncate">Dinuka Alwis</p>
-              <p className="text-[11px] text-slate-500 truncate font-medium">Owner • dinuka@cafe.com</p>
+              <p className="text-sm font-bold text-slate-900 truncate">
+                {currentUser?.name || "Dinuka Alwis"}
+              </p>
+              <p className="text-[11px] text-slate-500 truncate font-medium">
+                {currentUser?.email || "dinuka@cafe.com"}
+              </p>
             </div>
           </div>
           
           <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-            <button className="flex items-center gap-2 text-[12px] font-semibold text-slate-500 hover:text-slate-900 transition-colors">
+            <Link href="/dashboard/reviews" className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-500 hover:text-slate-900 transition-colors">
               <Settings className="w-4 h-4" />
-              Preferences
-            </button>
-            <button className="flex items-center gap-1.5 text-[12px] font-semibold text-rose-500 hover:text-rose-600 transition-colors">
+              Reviews
+            </Link>
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 text-[12px] font-semibold text-rose-500 hover:text-rose-600 transition-colors"
+            >
               <LogOut className="w-4 h-4" />
-              Exit
+              Sign Out
             </button>
           </div>
         </div>

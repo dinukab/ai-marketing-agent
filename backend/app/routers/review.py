@@ -138,6 +138,85 @@ def get_review_stats(
     )
 
 
+@router.post("/seed", response_model=List[ReviewResponse])
+def seed_reviews_endpoint(
+    business_id: int = Query(1, gt=0),
+    db: Session = Depends(get_db)
+):
+    business = db.query(db_models.Business).filter(db_models.Business.id == business_id).first()
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+
+    now = datetime.now(timezone.utc)
+    dummy_reviews = [
+        Review(
+            business_id=business_id,
+            google_review_id=f"seed_g_{business_id}_{int(now.timestamp())}_1",
+            customer_name="Sarah M.",
+            customer_avatar="SM",
+            rating=5,
+            review_text="The service was excellent. The staff were very friendly and the flat white was perfect. Definitely coming back for their weekend brunch pastries!",
+            review_date=now - timedelta(days=1),
+            sentiment="Positive",
+            sentiment_score=0.96,
+            topics=["Customer Service", "Staff", "Coffee Quality"],
+            ai_response=None,
+            response_status="Needs Response",
+            source="Google Local Guide • Level 4"
+        ),
+        Review(
+            business_id=business_id,
+            google_review_id=f"seed_g_{business_id}_{int(now.timestamp())}_2",
+            customer_name="John D.",
+            customer_avatar="JD",
+            rating=3,
+            review_text="The food was good, but the delivery took much longer than expected. It arrived lukewarm.",
+            review_date=now - timedelta(days=2),
+            sentiment="Neutral",
+            sentiment_score=0.45,
+            topics=["Food Quality", "Delivery Delays"],
+            ai_response=None,
+            response_status="Needs Response",
+            source="Google"
+        ),
+        Review(
+            business_id=business_id,
+            google_review_id=f"seed_g_{business_id}_{int(now.timestamp())}_3",
+            customer_name="Sophia K.",
+            customer_avatar="SK",
+            rating=1,
+            review_text="Very disappointing experience. The order was completely wrong and the cashier was rude when I pointed it out.",
+            review_date=now - timedelta(days=3),
+            sentiment="Negative",
+            sentiment_score=0.15,
+            topics=["Staff Attitude", "Order Accuracy"],
+            ai_response=None,
+            response_status="Needs Response",
+            source="Google"
+        ),
+        Review(
+            business_id=business_id,
+            google_review_id=f"seed_g_{business_id}_{int(now.timestamp())}_4",
+            customer_name="Michael R.",
+            customer_avatar="MR",
+            rating=5,
+            review_text="Outstanding brunch spot! The truffle avocado toast and seasonal matcha latte are world-class.",
+            review_date=now - timedelta(days=4),
+            sentiment="Positive",
+            sentiment_score=0.98,
+            topics=["Atmosphere", "Food Quality", "Beverage Craft"],
+            ai_response="Thank you Michael! We're thrilled you loved the truffle avocado toast and matcha latte. See you soon!",
+            response_status="Draft",
+            source="Google Local Guide • Level 6"
+        )
+    ]
+    db.add_all(dummy_reviews)
+    db.commit()
+    for r in dummy_reviews:
+        db.refresh(r)
+    return dummy_reviews
+
+
 @router.post(
     "/businesses/{business_id}/analyze-all",
     response_model=BulkReviewAnalysisResponse,

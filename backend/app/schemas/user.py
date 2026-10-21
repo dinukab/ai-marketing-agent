@@ -15,6 +15,24 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class BusinessSummary(BaseModel):
+    id: int
+    name: str
+    location: Optional[str] = None
+    ai_tone: Optional[str] = "Professional"
+
+    class Config:
+        from_attributes = True
+
+class UserMeResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    businesses: list[BusinessSummary] = []
+
+    class Config:
+        from_attributes = True
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str

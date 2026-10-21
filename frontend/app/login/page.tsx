@@ -24,7 +24,7 @@ export default function LoginPage() {
             if (res && res.user && res.user.name) {
                 localStorage.setItem('userName', res.user.name);
             }
-            router.push('/dashboard');
+            router.push('/dashboard/reviews');
         } catch (err: any) {
             setError(err.message || 'Login failed');
         } finally {
@@ -83,6 +83,23 @@ export default function LoginPage() {
                             {error}
                         </div>
                     )}
+
+                    <div className="mb-5 p-3 bg-blue-50/80 border border-blue-100 rounded-xl flex items-center justify-between text-xs">
+                        <div>
+                            <span className="font-bold text-blue-900">Demo Account:</span>
+                            <span className="text-blue-700 ml-1.5 font-mono">test@gmail.com</span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setEmail('test@gmail.com');
+                                setPassword('password123');
+                            }}
+                            className="text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg transition-colors shadow-sm"
+                        >
+                            Auto-Fill
+                        </button>
+                    </div>
 
                     <form className="space-y-4" onSubmit={handleSubmit}>
                         <div>
