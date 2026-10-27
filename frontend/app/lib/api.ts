@@ -384,17 +384,42 @@ export interface AiBusinessInsightsData {
   generated_at?: string;
 }
 
+export interface RatingDistributionData {
+  business_id: number;
+  timeframe?: string;
+  average_rating: number;
+  total_reviews: number;
+  star_1: number;
+  star_2: number;
+  star_3: number;
+  star_4: number;
+  star_5: number;
+  breakdown: Record<number, number>;
+  items: Array<{
+    rating: number;
+    count: number;
+    percentage: number;
+  }>;
+}
+
 export interface AnalyticsDashboardData {
   business_id: number;
   timeframe: string;
   overview: AnalyticsOverviewData;
   sentiment_distribution: SentimentDistributionData;
-  rating_distribution: any;
+  rating_distribution: RatingDistributionData;
   trends: ReviewTrendsData;
   topics: TopicsAndIssuesData["topics"];
   issues: TopicsAndIssuesData["issues"];
+  topics_and_issues?: TopicsAndIssuesData;
   reply_performance?: ReplyPerformanceData | null;
   ai_insights?: AiBusinessInsightsData | null;
+}
+
+export async function fetchRatingDistribution(businessId?: number, timeframe: string = "30days") {
+  const params = new URLSearchParams({ timeframe });
+  if (businessId) params.append("business_id", businessId.toString());
+  return apiFetch<RatingDistributionData>(`/api/analytics/rating-distribution?${params.toString()}`);
 }
 
 export async function fetchAnalyticsOverview(businessId?: number, timeframe: string = "30days") {
