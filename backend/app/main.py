@@ -42,9 +42,11 @@ app.include_router(auth.router)
 
 from app.routers import review
 from app.routers.ai_analysis import router as ai_analysis_router
+from app.api import analytics as analytics_api
 
 app.include_router(review.router, prefix="/api/reviews", tags=["reviews"])
 app.include_router(ai_analysis_router)
+app.include_router(analytics_api.router, prefix="/api/analytics", tags=["analytics"])
 
 @app.get("/api/health")
 def health_check(db: Session = Depends(get_db)):

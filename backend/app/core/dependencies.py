@@ -65,3 +65,13 @@ def get_current_user(
         )
 
     return user
+
+
+def get_optional_current_user(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> models.User | None:
+    try:
+        return get_current_user(request, db)
+    except HTTPException:
+        return None

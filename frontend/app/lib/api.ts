@@ -255,3 +255,186 @@ export async function analyzeReview(reviewId: number) {
     method: "POST",
   });
 }
+
+// ============================================================================
+// Analytics API Helpers (Analysis Page)
+// ============================================================================
+
+export interface AnalyticsOverviewData {
+  business_id: number;
+  timeframe: string;
+  total_reviews: number;
+  average_rating: number;
+  positive_reviews: number;
+  negative_reviews: number;
+  neutral_reviews: number;
+  unanalyzed_reviews: number;
+  unanswered_reviews: number;
+  reply_coverage_percentage: number;
+  rating_change?: number | null;
+  review_count_change?: number | null;
+}
+
+export interface SentimentDistributionData {
+  business_id: number;
+  timeframe: string;
+  total_analyzed: number;
+  positive: number;
+  neutral: number;
+  negative: number;
+  positive_percentage: number;
+  neutral_percentage: number;
+  negative_percentage: number;
+  items: Array<{
+    name: string;
+    count: number;
+    percentage: number;
+    color?: string | null;
+  }>;
+  emotions: Array<{
+    emotion: string;
+    count: number;
+    percentage: number;
+  }>;
+}
+
+export interface ReviewTrendsData {
+  business_id: number;
+  timeframe: string;
+  rating_trends: Array<{
+    period: string;
+    date?: string | null;
+    average_rating: number;
+    count: number;
+  }>;
+  volume_trends: Array<{
+    period: string;
+    date?: string | null;
+    current: number;
+    previous?: number | null;
+  }>;
+  sentiment_trends: Array<{
+    period: string;
+    date?: string | null;
+    positive: number;
+    neutral: number;
+    negative: number;
+    total: number;
+  }>;
+}
+
+export interface TopicsAndIssuesData {
+  business_id: number;
+  timeframe: string;
+  topics: Array<{
+    name: string;
+    count: number;
+    percentage: number;
+    is_positive: boolean;
+    sentiment?: string | null;
+  }>;
+  issues: Array<{
+    issue: string;
+    count: number;
+    percentage: number;
+    severity?: string | null;
+    status?: string | null;
+  }>;
+  total_topics_detected: number;
+  total_issues_detected: number;
+}
+
+export interface ReplyPerformanceData {
+  business_id: number;
+  timeframe: string;
+  total_reviews: number;
+  replied_count: number;
+  unanswered_count: number;
+  reply_coverage_percentage: number;
+  average_response_time_hours?: number | null;
+  ai_generated_replies_count: number;
+  manual_replies_count: number;
+  rating_tier_breakdown: Array<{
+    rating_group: string;
+    total_reviews: number;
+    replied_count: number;
+    unreplied_count: number;
+    response_rate: number;
+    avg_response_hours?: number | null;
+  }>;
+}
+
+export interface AiBusinessInsightsData {
+  business_id: number;
+  timeframe: string;
+  executive_summary: string;
+  key_strengths: string[];
+  areas_for_improvement: string[];
+  recommended_actions: string[];
+  insights: Array<{
+    id?: string | null;
+    category: string;
+    insight_type: string;
+    priority: string;
+    title: string;
+    description: string;
+    actionable_recommendation?: string | null;
+    supporting_review_ids: number[];
+  }>;
+  generated_at?: string;
+}
+
+export interface AnalyticsDashboardData {
+  business_id: number;
+  timeframe: string;
+  overview: AnalyticsOverviewData;
+  sentiment_distribution: SentimentDistributionData;
+  rating_distribution: any;
+  trends: ReviewTrendsData;
+  topics: TopicsAndIssuesData["topics"];
+  issues: TopicsAndIssuesData["issues"];
+  reply_performance?: ReplyPerformanceData | null;
+  ai_insights?: AiBusinessInsightsData | null;
+}
+
+export async function fetchAnalyticsOverview(businessId?: number, timeframe: string = "30days") {
+  const params = new URLSearchParams({ timeframe });
+  if (businessId) params.append("business_id", businessId.toString());
+  return apiFetch<AnalyticsOverviewData>(`/api/analytics/overview?${params.toString()}`);
+}
+
+export async function fetchSentimentDistribution(businessId?: number, timeframe: string = "30days") {
+  const params = new URLSearchParams({ timeframe });
+  if (businessId) params.append("business_id", businessId.toString());
+  return apiFetch<SentimentDistributionData>(`/api/analytics/sentiment?${params.toString()}`);
+}
+
+export async function fetchReviewTrends(businessId?: number, timeframe: string = "30days") {
+  const params = new URLSearchParams({ timeframe });
+  if (businessId) params.append("business_id", businessId.toString());
+  return apiFetch<ReviewTrendsData>(`/api/analytics/trends?${params.toString()}`);
+}
+
+export async function fetchTopicsAndIssues(businessId?: number, timeframe: string = "30days") {
+  const params = new URLSearchParams({ timeframe });
+  if (businessId) params.append("business_id", businessId.toString());
+  return apiFetch<TopicsAndIssuesData>(`/api/analytics/topics-and-issues?${params.toString()}`);
+}
+
+export async function fetchReplyPerformance(businessId?: number, timeframe: string = "30days") {
+  const params = new URLSearchParams({ timeframe });
+  if (businessId) params.append("business_id", businessId.toString());
+  return apiFetch<ReplyPerformanceData>(`/api/analytics/reply-performance?${params.toString()}`);
+}
+
+export async function fetchAiBusinessInsights(businessId?: number, timeframe: string = "30days") {
+  const params = new URLSearchParams({ timeframe });
+  if (businessId) params.append("business_id", businessId.toString());
+  return apiFetch<AiBusinessInsightsData>(`/api/analytics/ai-insights?${params.toString()}`);
+}
+
+export async function fetchAnalyticsDashboard(businessId?: number, timeframe: string = "30days") {
+  const params = new URLSearchParams({ timeframe });
+  if (businessId) params.append("business_id", businessId.toString());
+  return apiFetch<AnalyticsDashboardData>(`/api/analytics/dashboard?${params.toString()}`);
+}
